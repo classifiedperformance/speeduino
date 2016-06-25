@@ -11,10 +11,10 @@ Returns how much free dynamic memory exists (between heap and stack)
 #include "utils.h"
 
 int freeRam ()
-{
+{   
   extern int __heap_start, *__brkval;
   int v;
-  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
+  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);  
 }
 
 void setPinMapping(byte boardID)

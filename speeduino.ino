@@ -72,6 +72,8 @@ struct table3D ignitionTable; //16x16 ignition map
 struct table3D afrTable; //16x16 afr target map
 struct table3D boostTable; //8x8 boost map
 struct table3D vvtTable; //8x8 vvt map
+struct table3D E85TableINJ; //4x4 E85 injection trim map
+struct table3D E85TableIGN; //4x4 E85 ignition trim map
 struct table2D taeTable; //4 bin TPS Acceleration Enrichment map (2D)
 struct table2D WUETable; //10 bin Warm Up Enrichment map (2D)
 struct table2D dwellVCorrectionTable; //6 bin dwell voltage correction (2D)
@@ -136,9 +138,9 @@ byte degreesPerLoop; //The number of crank degrees that pass for each mainloop o
 volatile bool fpPrimed = false; //Tracks whether or not the fuel pump priming has been completed yet
 
 void setup() 
-{
-    Serial.begin(115200);
-    
+{  
+  Serial.begin(115200);
+  
   //Setup the dummy fuel and ignition tables
   //dummyFuelTable(&fuelTable);
   //dummyIgnitionTable(&ignitionTable);
@@ -146,10 +148,12 @@ void setup()
   table3D_setSize(&ignitionTable, 16);
   table3D_setSize(&afrTable, 16);
   table3D_setSize(&boostTable, 8);
-  table3D_setSize(&vvtTable, 8);
- 
-  loadConfig();
-  
+  table3D_setSize(&vvtTable, 8);  
+  table3D_setSize(&E85TableINJ, 4);
+  table3D_setSize(&E85TableIGN, 4);
+
+  loadConfig(); 
+
   //Repoint the 2D table structs to the config pages that were just loaded
   taeTable.valueSize = SIZE_BYTE; //Set this table to use byte values
   taeTable.xSize = 4;
@@ -442,6 +446,7 @@ void setup()
     cbi(ADCSRA,ADPS0);
   #endif
 
+
   
   mainLoopCount = 0;
   ignitionCount = 0;
@@ -615,8 +620,8 @@ void setup()
       ign4StartFunction = beginCoil4Charge;
       ign4EndFunction = endCoil4Charge;
       break;
-  }
-  
+  }  
+
   //Begin priming the fuel pump. This is turned off in the low resolution, 1s interrupt in timers.ino
   digitalWrite(pinFuelPump, HIGH);
   fuelPumpOn = true;
@@ -668,7 +673,10 @@ void loop()
       fuelOn = false;
       if (fpPrimed) { digitalWrite(pinFuelPump, LOW); } //Turn off the fuel pump, but only if the priming is complete
       fuelPumpOn = false;
-      TIMSK4 &= ~(1 << OCIE4C); digitalWrite(pinIdle1, LOW); //Turns off the idle control PWM. This REALLY needs to be cleaned up into a general PWM controller class
+      
+      TIMSK4 &= ~(1 << OCIE4C); 
+      
+      digitalWrite(pinIdle1, LOW); //Turns off the idle control PWM. This REALLY needs to be cleaned up into a general PWM controller class
     }
     
     //Uncomment the following for testing
@@ -731,7 +739,7 @@ void loop()
        readCLT();
        readIAT();
        readO2();
-       readBat();  
+       readBat();         
        
        vvtControl();
        boostControl(); //Most boost tends to run at about 30Hz, so placing it here ensures a new target time is fetched frequently enough
@@ -775,6 +783,11 @@ void loop()
         currentStatus.VE = get3DTableValue(&fuelTable, currentStatus.MAP, currentStatus.RPM); //Perform lookup into fuel map for RPM vs MAP value
         currentStatus.PW = PW_SD(req_fuel_uS, currentStatus.VE, currentStatus.MAP, currentStatus.corrections, inj_opentime_uS);
         currentStatus.advance = get3DTableValue(&ignitionTable, currentStatus.MAP, currentStatus.RPM); //As above, but for ignition advance
+        
+        //If E85 trimming is enabled then trim ignition timing. As it is only ready for speed density it is run here.
+        if (configPage3.E85Enabled){
+          currentStatus.advance += (currentStatus.flexADC * get3DTableValue(&E85TableIGN, currentStatus.MAP, currentStatus.RPM) / FLEXADCMAX);
+        }
       }
       else
       { 
@@ -1229,4 +1242,3 @@ void endCoil2and4Charge() { digitalWrite(pinCoil2, coilLOW); digitalWrite(pinCoi
 
 void nullCallback() { return; }
   
-

@@ -29,7 +29,6 @@ void initialiseTimers()
 #endif
 }
 
-
 //Timer2 Overflow Interrupt Vector, called when the timer overflows.
 //Executes every ~1ms.
 #if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__) //AVR chips use the ISR for this
@@ -51,7 +50,7 @@ void timer2Overflowinterrupt() //Most ARM chips can simply call a function
   if(ignitionSchedule2.Status == RUNNING) { if(ignitionSchedule2.startTime < targetOverdwellTime && configPage2.useDwellLim) { endCoil2Charge(); } if(ignitionSchedule2.startTime < targetTachoPulseTime) { digitalWrite(pinTachOut, HIGH); } }
   if(ignitionSchedule3.Status == RUNNING) { if(ignitionSchedule3.startTime < targetOverdwellTime && configPage2.useDwellLim) { endCoil3Charge(); } if(ignitionSchedule3.startTime < targetTachoPulseTime) { digitalWrite(pinTachOut, HIGH); } }
   if(ignitionSchedule4.Status == RUNNING) { if(ignitionSchedule4.startTime < targetOverdwellTime && configPage2.useDwellLim) { endCoil4Charge(); } if(ignitionSchedule4.startTime < targetTachoPulseTime) { digitalWrite(pinTachOut, HIGH); } }  
-  
+
   //Loop executed every 250ms loop (1ms x 250 = 250ms)
   //Anything inside this if statement will run every 250ms.
   if (loop250ms == 250) 
@@ -63,7 +62,6 @@ void timer2Overflowinterrupt() //Most ARM chips can simply call a function
   if (loopSec == 1000) 
   {
     loopSec = 0; //Reset counter.
-
     //**************************************************************************************************************************************************
     //This updates the runSecs variable
     //If the engine is running or cranking, we need ot update the run time counter.
@@ -83,7 +81,7 @@ void timer2Overflowinterrupt() //Most ARM chips can simply call a function
     //Check the fan output status
     if (configPage4.fanEnable == 1)
     { 
-       fanControl();            // Fucntion to turn the cooling fan on/off 
+      fanControl();            // Fucntion to turn the cooling fan on/off 
     }
     
     //Check whether fuel pump priming is complete
@@ -111,6 +109,11 @@ void timer2Overflowinterrupt() //Most ARM chips can simply call a function
       
     }
 
+    //Check if E85 Enrichment is being used and read Flex sensor
+    if (configPage3.E85Enabled)
+    {
+      readFLEX();
+    }
   }
 #if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__) //AVR chips use the ISR for this
     //Reset Timer2 to trigger in another ~1ms 

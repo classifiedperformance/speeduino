@@ -8,7 +8,7 @@ A full copy of the license may be found in the projects root directory
 The corrections functions in this file affect the fuel pulsewidth (Either increasing or decreasing)
 based on factors other than the VE lookup.
 
-These factors include temperature (Warmup Enrichment and After Start Enrichment), Acceleration/Decelleration, 
+These factors include temperature (Warmup Enrichment and After Start Enrichment), Acceleration/Decelleration, E85 Trim
 Flood clear mode etc.
 */
 //************************************************************************************************************
@@ -53,6 +53,10 @@ byte correctionsTotal()
   if (result != 100) { sumCorrections = (sumCorrections * result); activeCorrections++; }
   if (activeCorrections == 3) { sumCorrections = sumCorrections / powint(100,activeCorrections); activeCorrections = 0; }
   
+  result = correctionE85INJ();
+  if (result != 100) { sumCorrections = (sumCorrections * result); activeCorrections++; }
+  if (activeCorrections == 3) { sumCorrections = sumCorrections / powint(100,activeCorrections); activeCorrections = 0; }
+
   currentStatus.egoCorrection = correctionsAFRClosedLoop();
   if (currentStatus.egoCorrection != 100) { sumCorrections = (sumCorrections * currentStatus.egoCorrection); activeCorrections++; }
   if (activeCorrections == 3) { sumCorrections = sumCorrections / powint(100,activeCorrections); activeCorrections = 0; }
@@ -292,4 +296,22 @@ byte correctionsAFRClosedLoop()
   }
   
   return 100; //Catch all (Includes when AFR target = current AFR
+}
+
+
+/*
+If E85 enrichment enabled then workout how much extra fuel is required.
+This is done by linear interpolation between amount of ethanol read by flex sensor and the E85 trim tables.
+E85 Only for Speed Density right now. Might be fueling problems in Alpha-N.
+*/
+
+byte correctionE85INJ(){
+  if (configPage3.E85Enabled){
+    //Currently only for Speed Density. Until further testing.
+    if (configPage1.algorithm == 0){
+      return 100 + (currentStatus.flexADC * get3DTableValue(&E85TableINJ, currentStatus.MAP, currentStatus.RPM) / FLEXADCMAX);
+    }
+    return 100; 
+  }
+  return 100;
 }
