@@ -306,7 +306,7 @@ E85 Only for Speed Density right now. Might be fueling problems in Alpha-N.
 */
 
 byte correctionE85INJ(){
-  if (configPage3.E85Enabled){
+  if (configPage1.flexEnabled){
     //Currently only for Speed Density. Until further testing.
     if (configPage1.algorithm == 0){
       return 100 + (currentStatus.flexADC * get3DTableValue(&E85TableINJ, currentStatus.MAP, currentStatus.RPM) / FLEXADCMAX);

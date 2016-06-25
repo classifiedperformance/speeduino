@@ -110,7 +110,7 @@ void timer2Overflowinterrupt() //Most ARM chips can simply call a function
     }
 
     //Check if E85 Enrichment is being used and read Flex sensor
-    if (configPage3.E85Enabled)
+    if (configPage1.flexEnabled)
     {
       readFLEX();
     }

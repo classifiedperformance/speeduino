@@ -785,7 +785,7 @@ void loop()
         currentStatus.advance = get3DTableValue(&ignitionTable, currentStatus.MAP, currentStatus.RPM); //As above, but for ignition advance
         
         //If E85 trimming is enabled then trim ignition timing. As it is only ready for speed density it is run here.
-        if (configPage3.E85Enabled){
+        if (configPage1.flexEnabled){
           currentStatus.advance += (currentStatus.flexADC * get3DTableValue(&E85TableIGN, currentStatus.MAP, currentStatus.RPM) / FLEXADCMAX);
         }
       }

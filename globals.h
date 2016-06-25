@@ -303,8 +303,7 @@ struct config3 {
   byte egoType : 2;
   byte boostEnabled : 1;
   byte vvtEnabled : 1;
-  byte boostCutType : 2;
-  byte E85Enabled : 1;
+  byte boostCutType : 2;  
   
   byte egoKP;
   byte egoKI;
