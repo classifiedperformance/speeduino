@@ -11,10 +11,10 @@ Returns how much free dynamic memory exists (between heap and stack)
 #include "utils.h"
 
 int freeRam ()
-{
+{   
   extern int __heap_start, *__brkval;
   int v;
-  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
+  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);  
 }
 
 void setPinMapping(byte boardID)
@@ -32,6 +32,7 @@ void setPinMapping(byte boardID)
       pinCoil3 = 12; //Pin for coil 3
       pinCoil4 = 13; //Pin for coil 4
       pinTrigger = 2; //The CAS pin
+      pinTrigger2 = 3; //The CAS pin
       pinTPS = A0; //TPS input pin
       pinMAP = A1; //MAP sensor pin
       pinIAT = A2; //IAT sensor pin
@@ -44,6 +45,7 @@ void setPinMapping(byte boardID)
       pinFan = 47; //Pin for the fan output
       pinFuelPump = 4; //Fuel pump output
       pinTachOut = 49; //Tacho output pin
+      pinFlex = 19; // Flex sensor (Must be external interrupt enabled)
       break;
     case 1:
       //Pin mappings as per the v0.2 shield
@@ -71,6 +73,7 @@ void setPinMapping(byte boardID)
       pinStepperStep = 17; //Step pin for DRV8825 driver
       pinFan = 47; //Pin for the fan output
       pinFuelPump = 4; //Fuel pump output
+      pinFlex = 2; // Flex sensor (Must be external interrupt enabled)
       break;
     case 2:
       //Pin mappings as per the v0.3 shield
@@ -99,6 +102,7 @@ void setPinMapping(byte boardID)
       pinStepperStep = 17; //Step pin for DRV8825 driver
       pinFan = A13; //Pin for the fan output
       pinLaunch = 12; //Can be overwritten below
+      pinFlex = 2; // Flex sensor (Must be external interrupt enabled)
       break;
 
     case 3:
@@ -128,6 +132,7 @@ void setPinMapping(byte boardID)
       pinStepperStep = 17; //Step pin for DRV8825 driver
       pinFan = 47; //Pin for the fan output (Goes to ULN2803)
       pinLaunch = 12; //Can be overwritten below
+      pinFlex = 2; // Flex sensor (Must be external interrupt enabled)
       break;
 
     case 10:
@@ -160,6 +165,7 @@ void setPinMapping(byte boardID)
       pinFuelPump = 42; //Fuel pump output 2n2222
       pinFan = 47; //Pin for the fan output
       pinTachOut = 49; //Tacho output pin
+      pinFlex = 2; // Flex sensor (Must be external interrupt enabled)
       break;
 
     case 20:
@@ -273,8 +279,6 @@ void setPinMapping(byte boardID)
   pinMode(pinIdle2, OUTPUT);
   pinMode(pinFuelPump, OUTPUT);
   pinMode(pinIgnBypass, OUTPUT);
-  if (configPage3.launchHiLo) { pinMode(pinLaunch, INPUT); }
-  else { pinMode(pinLaunch, INPUT_PULLUP); } //If launch triggers on LOW signal, then set a pull up as the default
   
   inj1_pin_port = portOutputRegister(digitalPinToPort(pinInjector1));
   inj1_pin_mask = digitalPinToBitMask(pinInjector1);
@@ -305,7 +309,11 @@ void setPinMapping(byte boardID)
   pinMode(pinTrigger, INPUT);
   pinMode(pinTrigger2, INPUT);
   pinMode(pinTrigger3, INPUT);
-  //
+  pinMode(pinFlex, INPUT_PULLUP); //Standard GM / Continental flex sensor requires pullup
+  if (configPage3.launchHiLo) { pinMode(pinLaunch, INPUT); }
+  else { pinMode(pinLaunch, INPUT_PULLUP); } //If launch triggers on LOW signal, then set a pull up as the default
+
+  //Set default values
   digitalWrite(pinMAP, HIGH);
   //digitalWrite(pinO2, LOW);
   digitalWrite(pinTPS, LOW);
@@ -327,17 +335,19 @@ unsigned int PW(int REQ_FUEL, byte VE, byte MAP, int corrections, int injOpen, b
   //Standard float version of the calculation
   //return (REQ_FUEL * (float)(VE/100.0) * (float)(MAP/100.0) * (float)(TPS/100.0) * (float)(corrections/100.0) + injOpen);
   //Note: The MAP and TPS portions are currently disabled, we use VE and corrections only
-  int iVE, iMAP, iCorrections, iTPS;
+  int iVE, iMAP, iAFR, iCorrections, iTPS;
 
   //100% float free version, does sacrifice a little bit of accuracy, but not much.
   iVE = ((int)VE << 7) / 100;
-  if( configPage1.multiplyMAP ) { iMAP = ((int)MAP << 7) / currentStatus.baro; }
+  if( configPage1.multiplyMAP ) { iMAP = ((int)MAP << 7) / currentStatus.baro; } //Include multiply MAP (vs baro) if enabled
+  if( configPage1.includeAFR ) { iAFR = ((int)currentStatus.O2 << 7) / currentStatus.afrTarget; } //Include AFR (vs target) if enabled
   iCorrections = (corrections << 7) / 100;
   //int iTPS = ((int)TPS << 7) / 100;
 
 
   unsigned long intermediate = ((long)REQ_FUEL * (long)iVE) >> 7; //Need to use an intermediate value to avoid overflowing the long
   if( configPage1.multiplyMAP ) { intermediate = (intermediate * iMAP) >> 7; }
+  if( configPage1.includeAFR ) { intermediate = (intermediate * iAFR) >> 7; }
   intermediate = (intermediate * iCorrections) >> 7;
   //intermediate = (intermediate * iTPS) >> 7;
   if(intermediate == 0) { return 0; } //If the pulsewidth is 0, we return here before the opening time gets added

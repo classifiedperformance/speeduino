@@ -19,22 +19,22 @@ const int map_page_size = 288;
 #define BIT_CHECK(var,pos) ((var) & (1<<(pos)))
 
 //Define bit positions within engine virable
-#define BIT_ENGINE_RUN      0     // Engine running
-#define BIT_ENGINE_CRANK    1   // Engine cranking
-#define BIT_ENGINE_ASE      2    // after start enrichment (ASE)
-#define BIT_ENGINE_WARMUP   3  // Engine in warmup
-#define BIT_ENGINE_ACC      4    // in TPS acceleration model
-#define BIT_ENGINE_DCC      5    // in deceleration mode
-#define BIT_ENGINE_MAP      6    // in MAP acceleration mode
-#define BIT_ENGINE_IDLE     7  // idle on
+#define BIT_ENGINE_RUN    0     // Engine running
+#define BIT_ENGINE_CRANK  1   // Engine cranking
+#define BIT_ENGINE_ASE    2    // after start enrichment (ASE)
+#define BIT_ENGINE_WARMUP 3  // Engine in warmup
+#define BIT_ENGINE_ACC    4    // in TPS acceleration model
+#define BIT_ENGINE_DCC    5    // in deceleration mode
+#define BIT_ENGINE_MAP    6    // in MAP acceleration mode
+#define BIT_ENGINE_IDLE   7  // idle on
 
 //Define masks for Squirt
-#define BIT_SQUIRT_INJ1          0  //inj1 Squirt
-#define BIT_SQUIRT_INJ2          1  //inj2 Squirt
-#define BIT_SQUIRT_INJ3          2  //inj3 Squirt
-#define BIT_SQUIRT_INJ4          3  //inj4 Squirt
-#define BIT_SQUIRT_DFCO          4 //Decelleration fuel cutoff
-#define BIT_SQUIRT_BOOSTCUT      5  //Fuel component of MAP based boost cut out 
+#define BIT_SQUIRT_INJ1           0  //inj1 Squirt
+#define BIT_SQUIRT_INJ2           1  //inj2 Squirt
+#define BIT_SQUIRT_INJ3           2  //inj3 Squirt
+#define BIT_SQUIRT_INJ4           3  //inj4 Squirt
+#define BIT_SQUIRT_DFCO           4 //Decelleration fuel cutoff
+#define BIT_SQUIRT_BOOSTCUT       5  //Fuel component of MAP based boost cut out 
 #define BIT_SQUIRT_TOOTHLOG1READY 6  //Used to flag if tooth log 1 is ready
 #define BIT_SQUIRT_TOOTHLOG2READY 7  //Used to flag if tooth log 2 is ready (Log is not currently used)
 
@@ -44,25 +44,27 @@ const int map_page_size = 288;
 #define BIT_SPARK_HRDLIM          2  //Hard limiter indicator
 #define BIT_SPARK_SFTLIM          3  //Soft limiter indicator
 #define BIT_SPARK_BOOSTCUT        4  //Spark component of MAP based boost cut out
-#define BIT_SPARK_UNUSED3          5  //
-#define BIT_SPARK_UNUSED4          6  //
-#define BIT_SPARK_UNUSED5          7  //
+#define BIT_SPARK_UNUSED3         5  //
+#define BIT_SPARK_UNUSED4         6  //
+#define BIT_SPARK_UNUSED5         7  //
 
-#define VALID_MAP_MAX 1022 //The largest ADC value that is valid for the MAP sensor
-#define VALID_MAP_MIN 2 //The smallest ADC value that is valid for the MAP sensor
+#define VALID_MAP_MAX             1022 //The largest ADC value that is valid for the MAP sensor
+#define VALID_MAP_MIN             2 //The smallest ADC value that is valid for the MAP sensor
 
-#define TOOTH_LOG_SIZE      128
-#define TOOTH_LOG_BUFFER    256
+#define FLEXADCMAX                511 //Needs to be tuned to the ADC value of 85 ethanol. 511 is 100%.
 
-#define INJ_SIMULTANEOUS    0
-#define INJ_SEMISEQUENTIAL  1
-#define INJ_SEQUENTIAL      2
+#define TOOTH_LOG_SIZE            128
+#define TOOTH_LOG_BUFFER          256
 
-#define SIZE_BYTE   8
-#define SIZE_INT    16
+#define INJ_SIMULTANEOUS          0
+#define INJ_SEMISEQUENTIAL        1
+#define INJ_SEQUENTIAL            2
+
+#define SIZE_BYTE                 8
+#define SIZE_INT                  16
 
 //Table sizes
-#define CALIBRATION_TABLE_SIZE 512
+#define CALIBRATION_TABLE_SIZE  512
 #define CALIBRATION_TEMPERATURE_OFFSET 40 // All temperature measurements are stored offset by 40 degrees. This is so we can use an unsigned byte (0-255) to represent temperature ranges from -40 to 215
 
 #define SERIAL_BUFFER_THRESHOLD 32 // When the serial buffer is filled to greater than this threshold value, the serial processing operations will be performed more urgently in order to avoid it overflowing. Serial buffer is 64 bytes long, so the threshold is set at half this as a reasonable figure
@@ -113,6 +115,7 @@ struct statuses {
   int O2ADC;
   int O2_2ADC;
   int dwell;
+  int flexADC; //e85 flex sensor  
   byte dwellCorrection; //The amount of correction being applied to the dwell time.
   byte battery10; //The current BRV in volts (multiplied by 10. Eg 12.5V = 125)
   byte advance;
@@ -125,6 +128,7 @@ struct statuses {
   byte launchCorrection; //The amount of correction being applied if launch control is active
   byte afrTarget;
   byte idleDuty;
+  byte flex; //Ethanol reading (if enabled). 0 = No ethanol, 100 = pure ethanol. Eg E85 = 85. 
   unsigned long TAEEndTime; //The target end time used whenever TAE is turned on
   volatile byte squirt;
   volatile byte spark;
@@ -191,7 +195,8 @@ struct config1 {
   byte mapSample : 2;
   byte strokes : 1;
   byte injType : 1;
-  byte nCylinders : 4; //Number of cylinders
+  byte nCylinders : 3; //Number of cylinders
+  byte flexEnabled : 1;
 
   //config2 in ini  
   byte cltType1 : 2;
@@ -216,7 +221,7 @@ struct config1 {
   byte mapMin;
   unsigned int mapMax;
   byte fpPrime; //Time (In seconds) that the fuel pump should be primed for on power up
-  byte unused50;
+  byte stoich;
   byte unused51;
   byte unused52;
   byte unused53;
@@ -299,6 +304,7 @@ struct config3 {
   byte boostEnabled : 1;
   byte vvtEnabled : 1;
   byte boostCutType : 2;
+  byte E85Enabled : 1;
   
   byte egoKP;
   byte egoKI;
@@ -401,7 +407,7 @@ byte pinIAT; //IAT sensor pin
 byte pinCLT; //CLS sensor pin
 byte pinO2; //O2 Sensor pin
 byte pinO2_2; //second O2 pin
-byte pinBat; //O2 Sensor pin
+byte pinBat; //Battery Reference pin
 byte pinDisplayReset; // OLED reset pin
 byte pinTachOut; //Tacho output
 byte pinFuelPump; //Fuel pump on/off
@@ -415,7 +421,7 @@ byte pinSpareOut3; //Generic output
 byte pinSpareOut4; //Generic output
 byte pinSpareOut5; //Generic output
 byte pinSpareOut6; //Generic output
-byte pinSpareHOut1; //spare high current output
+byte pinSpareHOut1; // spare high current output
 byte pinSpareHOut2; // spare high current output
 byte pinSpareLOut1; // spare low current output
 byte pinSpareLOut2; // spare low current output
@@ -430,6 +436,7 @@ byte pinStepperDir; //Direction pin for the stepper motor driver
 byte pinStepperStep; //Step pin for the stepper motor driver
 byte pinLaunch;
 byte pinIgnBypass; //The pin used for an ignition bypass (Optional)
+byte pinFlex; //Pin with the flex sensor attached
 
 // global variables // from speeduino.ino
 extern struct statuses currentStatus; // from speeduino.ino

@@ -158,16 +158,21 @@ void writeConfig()
   }
   
   /*---------------------------------------------------
-  | Boost and vvt tables (See storage.h for data layout) - Page 8
-  | 8x8 table itself + the 8 values along each of the axis 
+  | Boost, vvt and E85 tables (See storage.h for data layout) - Page 8
+  | 8x8 table itself + the 8 values along each of the axis //boost and vvt
+  | 4x4 tables for E85
   -----------------------------------------------------*/
-  //Begin writing the 2 tables, basically the same thing as above but we're doing these 2 together (2 tables per page instead of 1)
+  //Begin writing the 4 tables, basically the same thing as above but we're doing these 4 together (4 tables per page instead of 1)
   if(EEPROM.read(EEPROM_CONFIG8_XSIZE1) != boostTable.xSize) { EEPROM.write(EEPROM_CONFIG8_XSIZE1,boostTable.xSize); } //Write the boost Table RPM dimension size
   if(EEPROM.read(EEPROM_CONFIG8_YSIZE1) != boostTable.ySize) { EEPROM.write(EEPROM_CONFIG8_YSIZE1,boostTable.ySize); } //Write the boost Table MAP/TPS dimension size
   if(EEPROM.read(EEPROM_CONFIG8_XSIZE2) != vvtTable.xSize) { EEPROM.write(EEPROM_CONFIG8_XSIZE2,vvtTable.xSize); } //Write the vvt Table RPM dimension size
   if(EEPROM.read(EEPROM_CONFIG8_YSIZE2) != vvtTable.ySize) { EEPROM.write(EEPROM_CONFIG8_YSIZE2,vvtTable.ySize); } //Write the vvt Table MAP/TPS dimension size
+  if(EEPROM.read(EEPROM_CONFIG8_XSIZE3) != E85TableINJ.xSize) { EEPROM.write(EEPROM_CONFIG8_XSIZE3,E85TableINJ.xSize); } //Write the e85inj Table RPM dimension size
+  if(EEPROM.read(EEPROM_CONFIG8_YSIZE3) != E85TableINJ.ySize) { EEPROM.write(EEPROM_CONFIG8_YSIZE3,E85TableINJ.ySize); } //Write the e85inj Table MAP dimension size
+  if(EEPROM.read(EEPROM_CONFIG8_XSIZE4) != E85TableIGN.xSize) { EEPROM.write(EEPROM_CONFIG8_XSIZE4,E85TableIGN.xSize); } //Write the e85ign Table RPM dimension size
+  if(EEPROM.read(EEPROM_CONFIG8_YSIZE4) != E85TableIGN.ySize) { EEPROM.write(EEPROM_CONFIG8_YSIZE4,E85TableIGN.ySize); } //Write the e85ign Table MAP dimension size
   
-  int y = EEPROM_CONFIG8_MAP2; //We do the 2 maps together in the same loop
+  int y = EEPROM_CONFIG8_MAP2; //We do boost and vvt maps together in the same loop
   for(int x=EEPROM_CONFIG8_MAP1; x<EEPROM_CONFIG8_XBINS1; x++) 
   { 
     offset = x - EEPROM_CONFIG8_MAP1;
@@ -176,7 +181,17 @@ void writeConfig()
     if(EEPROM.read(y) != vvtTable.values[7-offset/8][offset%8]) { EEPROM.write(y, vvtTable.values[7-offset/8][offset%8]); }  //Write the 8x8 map
     y++;
   }
-  //RPM bins
+  y = EEPROM_CONFIG8_MAP4; //Do e85 ign and inj maps together in the same loop
+  for(int x=EEPROM_CONFIG8_MAP3; x<EEPROM_CONFIG8_XBINS3; x++) 
+  { 
+    offset = x - EEPROM_CONFIG8_MAP3;
+    if(EEPROM.read(x) != E85TableINJ.values[3-offset/4][offset%4]) { EEPROM.write(x, E85TableINJ.values[3-offset/4][offset%4]); }  //Write the 4x4 map
+    offset = y - EEPROM_CONFIG8_MAP4;
+    if(EEPROM.read(y) != E85TableIGN.values[3-offset/4][offset%4]) { EEPROM.write(y, E85TableIGN.values[3-offset/4][offset%4]); }  //Write the 4x4 map
+    y++;
+  }
+
+  //RPM bins boost and vvt
   y = EEPROM_CONFIG8_XBINS2;
   for(int x=EEPROM_CONFIG8_XBINS1; x<EEPROM_CONFIG8_YBINS1; x++) 
   {
@@ -186,7 +201,7 @@ void writeConfig()
     if(EEPROM.read(y) != byte(vvtTable.axisX[offset]/100)) { EEPROM.write(y, byte(vvtTable.axisX[offset]/100)); } //RPM bins are divided by 100 and converted to a byte
     y++;
   }
-  //TPS/MAP bins
+  //TPS/MAP bins boost and vvt
   y=EEPROM_CONFIG8_YBINS2;
   for(int x=EEPROM_CONFIG8_YBINS1; x<EEPROM_CONFIG8_XSIZE2; x++) 
   {
@@ -194,6 +209,27 @@ void writeConfig()
     if(EEPROM.read(x) != boostTable.axisY[offset]) { EEPROM.write(x, boostTable.axisY[offset]); }
     offset = y - EEPROM_CONFIG8_YBINS2;
     if(EEPROM.read(y) != vvtTable.axisY[offset]) { EEPROM.write(y, vvtTable.axisY[offset]); }
+    y++;
+  }
+
+  //RPM bins E85
+  y = EEPROM_CONFIG8_XBINS4;
+  for(int x=EEPROM_CONFIG8_XBINS3; x<EEPROM_CONFIG8_YBINS3; x++) 
+  {
+    offset = x - EEPROM_CONFIG8_XBINS3;
+    if(EEPROM.read(x) != byte(E85TableINJ.axisX[offset]/100)) { EEPROM.write(x, byte(E85TableINJ.axisX[offset]/100)); } //RPM bins are divided by 100 and converted to a byte
+    offset = y - EEPROM_CONFIG8_XBINS4;
+    if(EEPROM.read(y) != byte(E85TableIGN.axisX[offset]/100)) { EEPROM.write(y, byte(E85TableIGN.axisX[offset]/100)); } //RPM bins are divided by 100 and converted to a byte
+    y++;
+  }
+  //TPS/MAP bins E85
+  y=EEPROM_CONFIG8_YBINS4;
+  for(int x=EEPROM_CONFIG8_YBINS3; x<EEPROM_CONFIG8_XSIZE4; x++) 
+  {
+    offset = x - EEPROM_CONFIG8_YBINS3;
+    if(EEPROM.read(x) != E85TableINJ.axisY[offset]) { EEPROM.write(x, E85TableINJ.axisY[offset]); }
+    offset = y - EEPROM_CONFIG8_YBINS4;
+    if(EEPROM.read(y) != E85TableIGN.axisY[offset]) { EEPROM.write(y, E85TableIGN.axisY[offset]); }
     y++;
   }
 }
@@ -310,7 +346,7 @@ void loadConfig()
   }
   
   //*********************************************************************************************************************************************************************************
-  // Boost and vvt tables load
+  // Boost, vvt and E85 Trim tables load
   int y = EEPROM_CONFIG8_MAP2;
   for(int x=EEPROM_CONFIG8_MAP1; x<EEPROM_CONFIG8_XBINS1; x++) 
   { 
@@ -321,7 +357,18 @@ void loadConfig()
     y++;
   }
 
-  //RPM bins
+  //E85
+  y = EEPROM_CONFIG8_MAP4;
+  for(int x=EEPROM_CONFIG8_MAP3; x<EEPROM_CONFIG8_XBINS3; x++) 
+  { 
+    offset = x - EEPROM_CONFIG8_MAP3;
+    E85TableINJ.values[3-offset/4][offset%4] = EEPROM.read(x); //Read the 4x4 map
+    offset = y - EEPROM_CONFIG8_MAP4;
+    E85TableIGN.values[3-offset/4][offset%4] = EEPROM.read(y); //Read the 4x4 map
+    y++;
+  }
+
+  //RPM bins boost, vvt
   y = EEPROM_CONFIG8_XBINS2;
   for(int x=EEPROM_CONFIG8_XBINS1; x<EEPROM_CONFIG8_YBINS1; x++) 
   {
@@ -332,7 +379,7 @@ void loadConfig()
     y++;
   }
     
-  //TPS/MAP bins
+  //TPS/MAP bins boost vvt
   y = EEPROM_CONFIG8_YBINS2;
   for(int x=EEPROM_CONFIG8_YBINS1; x<EEPROM_CONFIG8_XSIZE2; x++) 
   {
@@ -340,6 +387,28 @@ void loadConfig()
     boostTable.axisY[offset] = EEPROM.read(x);
     offset = y - EEPROM_CONFIG8_YBINS2;
     vvtTable.axisY[offset] = EEPROM.read(y);
+    y++;
+  }
+
+  //RPM bins e85
+  y = EEPROM_CONFIG8_XBINS4;
+  for(int x=EEPROM_CONFIG8_XBINS3; x<EEPROM_CONFIG8_YBINS3; x++) 
+  {
+    offset = x - EEPROM_CONFIG8_XBINS3;
+    E85TableINJ.axisX[offset] = (EEPROM.read(x) * 100); //RPM bins are divided by 100 when stored. Multiply them back now
+    offset = y - EEPROM_CONFIG8_XBINS4;
+    E85TableIGN.axisX[offset] = (EEPROM.read(y) * 100); //RPM bins are divided by 100 when stored. Multiply them back now
+    y++;
+  }
+    
+  //TPS/MAP bins e85
+  y = EEPROM_CONFIG8_YBINS4;
+  for(int x=EEPROM_CONFIG8_YBINS3; x<EEPROM_CONFIG8_XSIZE4; x++) 
+  {
+    offset = x - EEPROM_CONFIG8_YBINS3;
+    E85TableINJ.axisY[offset] = EEPROM.read(x);
+    offset = y - EEPROM_CONFIG8_YBINS4;
+    E85TableIGN.axisY[offset] = EEPROM.read(y);
     y++;
   }
 }
