@@ -310,6 +310,7 @@ void setPinMapping(byte boardID)
   pinMode(pinTrigger2, INPUT);
   pinMode(pinTrigger3, INPUT);
   pinMode(pinFlex, INPUT_PULLUP); //Standard GM / Continental flex sensor requires pullup
+  pinMode(pinFlexA, INPUT); //0-5 linear flex fuel sensor
   if (configPage3.launchHiLo) { pinMode(pinLaunch, INPUT); }
   else { pinMode(pinLaunch, INPUT_PULLUP); } //If launch triggers on LOW signal, then set a pull up as the default
 

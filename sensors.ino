@@ -132,8 +132,8 @@ void readO2()
 
 //Flex fuel sensor for E85 reading
 void readFLEX(){
-  tempReading = analogRead(pinFlex);
-  tempReading = fastMap1023toX(analogRead(pinFlex), 0, 1023, 0, 511);
+  tempReading = analogRead(pinFlexA);
+  tempReading = fastMap1023toX(analogRead(pinFlexA), 0, 1023, 0, FLEXADCMAX);
   currentStatus.flexADC = ADC_FILTER(tempReading, ADCFILTER_FLEX, currentStatus.flexADC);  
 }
 

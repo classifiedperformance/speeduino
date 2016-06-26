@@ -97,6 +97,8 @@ void timer2Overflowinterrupt() //Most ARM chips can simply call a function
     //Set the flex reading (if enabled). The flexCounter is updated with every pulse from the sensor. If cleared once per second, we get a frequency reading
     if(configPage1.flexEnabled)
     {
+      //Check if E85 Enrichment is being used and read Flex sensor
+      readFLEX();
       if(flexCounter > 150 || flexCounter < 50)
       {
         //This indicated an error condition. Spec of the sensor is that errors are above 170Hz)
@@ -107,12 +109,6 @@ void timer2Overflowinterrupt() //Most ARM chips can simply call a function
         flexCounter = 0;
       }
       
-    }
-
-    //Check if E85 Enrichment is being used and read Flex sensor
-    if (configPage1.flexEnabled)
-    {
-      readFLEX();
     }
   }
 #if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__) //AVR chips use the ISR for this

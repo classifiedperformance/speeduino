@@ -435,7 +435,8 @@ byte pinStepperDir; //Direction pin for the stepper motor driver
 byte pinStepperStep; //Step pin for the stepper motor driver
 byte pinLaunch;
 byte pinIgnBypass; //The pin used for an ignition bypass (Optional)
-byte pinFlex; //Pin with the flex sensor attached
+byte pinFlex; //Pin with the flex sensor attached (frequency)
+byte pinFlexA; //0-5v flex sensor
 
 // global variables // from speeduino.ino
 extern struct statuses currentStatus; // from speeduino.ino
